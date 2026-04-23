@@ -1,15 +1,17 @@
+import cats.effect.unsafe.implicits.global
 import com.google.inject.{AbstractModule, Provides, Singleton}
 import src.main.scala.security.application.InspeccionUseCase
+import src.main.scala.security.domain.ports.InspeccionRepository
 import src.main.scala.security.infraestructure.config.AppConfig
 import src.main.scala.security.infraestructure.kafka.KafkaEventPublisher
 import src.main.scala.security.infraestructure.persistence.{DatabaseTransactor, PostgresInspeccionRepository}
 
-
 class Module extends AbstractModule {
 
   override def configure(): Unit = {
-    // Arranca el consumer Kafka al iniciar la app
     bind(classOf[KafkaStarter]).asEagerSingleton()
+    bind(classOf[InspeccionRepository])
+      .to(classOf[PostgresInspeccionRepository])
   }
 
   @Provides @Singleton
