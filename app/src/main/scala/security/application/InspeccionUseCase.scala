@@ -1,8 +1,7 @@
 package src.main.scala.security.application
 
 import src.main.scala.security.domain.events.EventoEquipaje
-import src.main.scala.security.domain.model.{EstadoInspeccion, InspeccionEquipaje}
-import src.main.scala.security.domain.model.security.domain.model.ResultadoInspeccion
+import src.main.scala.security.domain.model.{EstadoInspeccion, InspeccionEquipaje, ResultadoInspeccion}
 import src.main.scala.security.domain.ports.{EventPublisher, InspeccionRepository}
 
 class InspeccionUseCase(
