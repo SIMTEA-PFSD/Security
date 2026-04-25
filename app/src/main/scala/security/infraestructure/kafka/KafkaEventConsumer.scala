@@ -13,28 +13,6 @@ import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 
 /**
- * «adapter» — Consumidor del tópico "registro.pasajero".
- *
- * Escucha los eventos PasajeroRegistrado que publica Check-in
- * y por cada uno ejecuta el InspeccionUseCase.
- *
- * ─────────────────────────────────────────────────────────────
- *  Formato del JSON que llega de Check-in:
- * ─────────────────────────────────────────────────────────────
- * {
- *   "eventId":    "uuid",
- *   "tipo":       "PasajeroRegistrado",
- *   "equipajeId": "equip-001",
- *   "timestamp":  "2024-01-15T10:30:00Z",
- *   "topico":     "registro.pasajero",
- *   "payload": {
- *     "pasajeroId": "pas-123",
- *     "vueloId":    "AV-456",
- *     "equipajeId": "equip-001"
- *   }
- * }
- * ─────────────────────────────────────────────────────────────
- *
  * PROBLEMA: Check-in no incluye codigoRFID ni peso en el payload
  * del evento PasajeroRegistrado (solo manda pasajeroId, vueloId,
  * equipajeId). Para el MVP simulamos esos valores. En producción
@@ -89,8 +67,6 @@ class KafkaEventConsumer(
     corriendo = false
     consumer.wakeup()
   }
-
-  // ─── Procesamiento de cada mensaje ────────────────────────
 
   private def procesarMensaje(json: String): Unit =
     deserializarComando(json) match {

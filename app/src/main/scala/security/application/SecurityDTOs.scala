@@ -1,30 +1,6 @@
 package src.main.scala.security.application
 
 
-// ─── Comando ──────────────────────────────────────────────────
-/**
- * Datos deserializados del evento PasajeroRegistrado que llega
- * de Kafka (tópico "registro.pasajero", producido por Check-in).
- *
- * Corresponde exactamente al payload que Check-in serializa:
- * {
- *   "equipajeId": "...",
- *   "payload": {
- *     "pasajeroId": "...",
- *     "vueloId":    "...",
- *     "equipajeId": "..."
- *   }
- * }
- *
- * Y también acepta llamadas manuales del endpoint HTTP con:
- * {
- *   "equipajeId": "...",
- *   "pasajeroId": "...",
- *   "vueloId":    "...",
- *   "codigoRFID": "...",
- *   "peso":       23.0
- * }
- */
 final case class InspeccionCommand(
                                     equipajeId: String,
                                     pasajeroId: String,
@@ -33,7 +9,7 @@ final case class InspeccionCommand(
                                     peso:       Double
                                   )
 
-// ─── Errores ──────────────────────────────────────────────────
+
 sealed trait SecurityError { def mensaje: String }
 
 object SecurityError {
@@ -59,10 +35,10 @@ object SecurityError {
   }
 }
 
-// ─── Respuesta ────────────────────────────────────────────────
+
 final case class InspeccionResponse(
                                      inspeccionId: String,
                                      equipajeId:   String,
-                                     resultado:    String,   // "APROBADO" o "RECHAZADO"
+                                     resultado:    String,   //aprobao o f
                                      motivo:       Option[String]
                                    )

@@ -21,13 +21,6 @@ final case class EventoEquipaje(
 
 object EventoEquipaje {
 
-  /**
-   * Evento que Security publica cuando un equipaje PASA la inspección.
-   * Este es el evento que el Dispatcher consume de "equipaje.bodega".
-   *
-   * El payload incluye vueloId porque el Dispatcher lo necesita para
-   * deserializar el DispatchCommand (ver KafkaEventConsumer del Dispatcher).
-   */
   def equipajeAprobado(
                         equipajeId: String,
                         pasajeroId: String,
@@ -46,10 +39,6 @@ object EventoEquipaje {
       )
     )
 
-  /**
-   * Evento que Security publica cuando un equipaje FALLA la inspección.
-   * Va al tópico "vuelo.eventualidades" para que otros servicios reaccionen.
-   */
   def equipajeRechazado(
                          equipajeId: String,
                          pasajeroId: String,
@@ -70,10 +59,6 @@ object EventoEquipaje {
       )
     )
 
-  /**
-   * Evento de log interno — registra que el escáner RFID procesó el equipaje.
-   * Va al tópico "equipaje.seguridad" (log de auditoría).
-   */
   def equipajeEscaneado(
                          equipajeId: String,
                          codigoRFID: String,

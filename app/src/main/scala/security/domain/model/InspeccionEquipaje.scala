@@ -3,12 +3,7 @@ package src.main.scala.security.domain.model
 import java.time.Instant
 import java.util.UUID
 
-/**
- * «entity» — Registro de la inspección de seguridad de un equipaje.
- *
- * Se persiste en la base de datos de Security para auditoría.
- * Cada equipaje que pasa por el escáner genera exactamente una InspeccionEquipaje.
- */
+
 final case class InspeccionEquipaje(
                                      id:          String,
                                      equipajeId:  String,
@@ -21,10 +16,7 @@ final case class InspeccionEquipaje(
                                      timestamp:   Instant
                                    )
 
-/**
- * Estados posibles de una inspección.
- * Son distintos de EstadoEquipaje — este es el estado del proceso de Security.
- */
+
 sealed trait EstadoInspeccion { def nombre: String }
 
 object EstadoInspeccion {

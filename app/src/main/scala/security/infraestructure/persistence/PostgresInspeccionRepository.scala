@@ -23,11 +23,11 @@ import scala.util.control.NonFatal
  * Todas las operaciones son síncronas vía unsafeRunSync —
  * mismo patrón que PostgresPasajeroRepository del Check-in.
  */
+
 final class PostgresInspeccionRepository(
   xa: HikariTransactor[IO]
 )(implicit runtime: IORuntime) extends InspeccionRepository {
 
-  // ─── Mapeo EstadoInspeccion ↔ VARCHAR ────────────────────
   private implicit val estadoMeta: Meta[EstadoInspeccion] =
     Meta[String].timap(parseEstado)(_.nombre)
 
@@ -38,14 +38,12 @@ final class PostgresInspeccionRepository(
     case otro        => throw new IllegalStateException(s"EstadoInspeccion desconocido en DB: $otro")
   }
 
-  // ─── Read: orden de columnas igual al SELECT de abajo ────
   private implicit val inspeccionRead: Read[InspeccionEquipaje] =
     Read[(String, String, String, String, String, Double, EstadoInspeccion, Option[String], Instant)]
       .map { case (id, equipajeId, pasajeroId, vueloId, codigoRFID, peso, resultado, motivo, timestamp) =>
         InspeccionEquipaje(id, equipajeId, pasajeroId, vueloId, codigoRFID, peso, resultado, motivo, timestamp)
       }
 
-  // ─── guardar ─────────────────────────────────────────────
   override def guardar(i: InspeccionEquipaje): Either[String, InspeccionEquipaje] = {
     val ins =
       sql"""
@@ -69,7 +67,6 @@ final class PostgresInspeccionRepository(
     }
   }
 
-  // ─── buscarPorEquipaje ───────────────────────────────────
   override def buscarPorEquipaje(equipajeId: String): Option[InspeccionEquipaje] = {
     val q =
       sql"""
@@ -84,7 +81,6 @@ final class PostgresInspeccionRepository(
     catch { case NonFatal(_) => None }
   }
 
-  // ─── listarTodas ─────────────────────────────────────────
   override def listarTodas(): List[InspeccionEquipaje] = {
     val q =
       sql"""
@@ -98,7 +94,6 @@ final class PostgresInspeccionRepository(
     catch { case NonFatal(_) => List.empty }
   }
 
-  // ─── listarPorVuelo ──────────────────────────────────────
   override def listarPorVuelo(vueloId: String): List[InspeccionEquipaje] = {
     val q =
       sql"""

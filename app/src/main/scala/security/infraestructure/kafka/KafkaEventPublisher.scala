@@ -11,19 +11,7 @@ import src.main.scala.security.infraestructure.config.AppConfig
 import java.util.Properties
 import scala.util.{Failure, Success, Try}
 
-/**
- * «adapter» — Publicador de eventos a Kafka.
- *
- * Security produce a DOS tópicos distintos según el resultado:
- *   - "equipaje.bodega"       → equipaje aprobado (lo consume Dispatcher)
- *   - "vuelo.eventualidades"  → equipaje rechazado (anomalía)
- *
- * El tópico correcto ya viene dentro del EventoEquipaje (campo `topico`),
- * así que este adapter simplemente serializa y envía — sin lógica de negocio.
- *
- * La key del mensaje es equipajeId → garantiza orden por equipaje
- * en la partición de Kafka.
- */
+
 class KafkaEventPublisher(config: AppConfig) extends EventPublisher {
 
   private val props = new Properties()

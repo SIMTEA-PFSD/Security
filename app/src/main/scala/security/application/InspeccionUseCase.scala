@@ -5,26 +5,6 @@ import src.main.scala.security.domain.model.{EstadoInspeccion, InspeccionEquipaj
 import src.main.scala.security.domain.model.security.domain.model.ResultadoInspeccion
 import src.main.scala.security.domain.ports.{EventPublisher, InspeccionRepository}
 
-/**
- * ─────────────────────────────────────────────────────────────
- *  CASO DE USO: INSPECCIONAR EQUIPAJE
- * ─────────────────────────────────────────────────────────────
- *
- *  Es el núcleo de Security. Orquesta el flujo completo al
- *  recibir un equipaje para inspección (desde Kafka o HTTP):
- *
- *   1. Valida que el equipaje no haya sido inspeccionado ya
- *   2. Aplica las reglas de inspección (peso, RFID, etc.)
- *   3. Persiste el registro de auditoría
- *   4. Publica el evento correspondiente:
- *        → APROBADO : "equipaje.bodega"        (lo consume Dispatcher)
- *        → RECHAZADO: "vuelo.eventualidades"   (anomalía del sistema)
- *
- *  Usa for-comprehension sobre Either para corto-circuitar en
- *  el primer error, igual que Check-in y Dispatcher.
- *
- *  NO conoce Kafka, Postgres ni HTTP — solo los puertos (traits).
- */
 class InspeccionUseCase(
                          inspeccionRepo: InspeccionRepository,
                          publisher:      EventPublisher,
@@ -50,8 +30,6 @@ class InspeccionUseCase(
       }
     )
 
-  // ─── Pasos privados ───────────────────────────────────────
-
   /**
    * Verifica que el equipaje no haya pasado por seguridad antes.
    * Evita dobles procesamientos si Kafka re-entrega el mensaje.
@@ -64,61 +42,32 @@ class InspeccionUseCase(
       case None    => Right(())
     }
 
-  /**
-   * Aplica las reglas de negocio de la inspección:
-   *   1. RFID no puede estar vacío
-   *   2. Peso no puede exceder el máximo
-   *
-   * Si pasa todas las reglas → Aprobado
-   * Si falla cualquiera     → Rechazado (con motivo)
-   *
-   * Nota: en un sistema real aquí se integraría el escáner
-   * de rayos X, detector de metales, etc. Para el MVP
-   * las reglas son validaciones de datos.
-   */
-  private def inspeccionarEquipaje(
-                                    cmd: InspeccionCommand
-                                  ): Either[SecurityError, ResultadoInspeccion] = {
+  private def inspeccionarEquipaje(cmd: InspeccionCommand): Either[SecurityError, ResultadoInspeccion] = {
 
-    // Regla 1: RFID debe ser válido
-    if (cmd.codigoRFID.trim.isEmpty)
-      return Right(ResultadoInspeccion.Rechazado(
+    def rechazar(motivo: String): ResultadoInspeccion =
+      ResultadoInspeccion.Rechazado(
         equipajeId = cmd.equipajeId,
         pasajeroId = cmd.pasajeroId,
         vueloId    = cmd.vueloId,
-        motivo     = "Código RFID vacío o inválido"
-      ))
+        motivo     = motivo
+      )
 
-    // Regla 2: Peso no puede exceder el máximo
-    if (cmd.peso > pesoMaximoKg)
-      return Right(ResultadoInspeccion.Rechazado(
+    val reglas: List[(Boolean, String)] = List(
+      (cmd.codigoRFID.trim.isEmpty, "Código RFID vacío o inválido"),
+      (cmd.peso > pesoMaximoKg,     s"Peso ${cmd.peso}kg excede el máximo de ${pesoMaximoKg}kg"),
+      (cmd.peso <= 0,               s"Peso inválido: ${cmd.peso}kg")
+    )
+
+    reglas.find(_._1) match {
+      case Some((_, motivo)) => Right(rechazar(motivo))
+      case None              => Right(ResultadoInspeccion.Aprobado(
         equipajeId = cmd.equipajeId,
         pasajeroId = cmd.pasajeroId,
-        vueloId    = cmd.vueloId,
-        motivo     = s"Peso ${cmd.peso}kg excede el máximo de ${pesoMaximoKg}kg"
+        vueloId    = cmd.vueloId
       ))
-
-    // Regla 3: Peso debe ser positivo
-    if (cmd.peso <= 0)
-      return Right(ResultadoInspeccion.Rechazado(
-        equipajeId = cmd.equipajeId,
-        pasajeroId = cmd.pasajeroId,
-        vueloId    = cmd.vueloId,
-        motivo     = s"Peso inválido: ${cmd.peso}kg"
-      ))
-
-    // Pasó todas las reglas → Aprobado
-    Right(ResultadoInspeccion.Aprobado(
-      equipajeId = cmd.equipajeId,
-      pasajeroId = cmd.pasajeroId,
-      vueloId    = cmd.vueloId
-    ))
+    }
   }
 
-  /**
-   * Persiste el registro de auditoría de la inspección.
-   * Se guarda independientemente del resultado (aprobado o rechazado).
-   */
   private def persistirInspeccion(
                                    cmd:       InspeccionCommand,
                                    resultado: ResultadoInspeccion
@@ -143,15 +92,6 @@ class InspeccionUseCase(
       .left.map(SecurityError.ErrorPersistencia)
   }
 
-  /**
-   * Publica el evento correcto según el resultado:
-   *   - Aprobado  → EventoEquipaje.equipajeAprobado → "equipaje.bodega"
-   *   - Rechazado → EventoEquipaje.equipajeRechazado → "vuelo.eventualidades"
-   *
-   * El Dispatcher escucha "equipaje.bodega" y reacciona solo
-   * a los aprobados. Las eventualidades las puede consumir cualquier
-   * servicio que necesite saber de anomalías.
-   */
   private def publicarEvento(
                               resultado: ResultadoInspeccion
                             ): Either[SecurityError, Unit] = {
