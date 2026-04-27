@@ -1,0 +1,82 @@
+# ═══════════════════════════════════════════════════════════════
+#  Docker Compose · Stack del microservicio Security
+# ═══════════════════════════════════════════════════════════════
+#
+#  Posición en el sistema:
+#    CONSUME de: Kafka del Check-in  (puerto 9092)
+#    PRODUCE a:  Kafka del Check-in  (puerto 9092)
+#
+#  Security NO levanta su propio Kafka — se conecta al del Check-in.
+#  Solo levanta su propia base de datos Postgres.
+#
+#  Modos de uso:
+#
+#   1) DEV (sbt local, conectado al Kafka del Check-in):
+#        docker compose up -d postgres
+#        # Asegurarse que el Kafka del Check-in esté corriendo
+#        sbt run
+#
+#   2) FULL STACK (todo en Docker):
+#        sbt Docker/publishLocal
+#        docker compose --profile app up -d
+# ═══════════════════════════════════════════════════════════════
+
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: security-postgres
+    ports:
+      - "5434:5432"        # puerto diferente al de Check-in (5432) y Dispatcher (5433)
+    environment:
+      POSTGRES_USER:             "security"
+      POSTGRES_PASSWORD:         "security123"
+      POSTGRES_DB:               "security_db"
+      POSTGRES_HOST_AUTH_METHOD: "trust"
+    volumes:
+      - security-postgres-data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U security -d security_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  security-service:
+    image: security-service:0.1.0
+    container_name: security-service
+    profiles: ["app"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8082:8082"
+    environment:
+      HTTP_PORT:                "8082"
+      # Se conecta al Kafka del Check-in
+      KAFKA_BOOTSTRAP:          "checkin-kafka:29092"
+      KAFKA_TOPIC_IN:           "registro.pasajero"
+      KAFKA_TOPIC_OUT:          "equipaje.bodega"
+      KAFKA_TOPIC_EVENTUALIDADES: "vuelo.eventualidades"
+      KAFKA_GROUP_ID:           "security-group"
+      DB_URL:                   "jdbc:postgresql://postgres:5432/security_db"
+      DB_USER:                  "security"
+      DB_PASSWORD:              "security123"
+
+volumes:
+  security-postgres-data:
+
+# ─── Nota de integración ────────────────────────────────────────
+#
+#  Para conectar Security al Kafka del Check-in en modo dev,
+#  ambos contenedores deben estar en la misma red Docker.
+#  Opción A — agregar Security a la red del Check-in:
+#
+#    networks:
+#      default:
+#        external: true
+#        name: checkin_default
+#
+#  Opción B — variable de entorno apuntando al host:
+#    KAFKA_BOOTSTRAP: "localhost:9092"
+#    (funciona cuando sbt run corre fuera de Docker)
